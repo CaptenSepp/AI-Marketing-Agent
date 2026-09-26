@@ -1,107 +1,158 @@
-# Agentic prototype
+# AI Marketing Agent
 
-Two Python services in one repository. They use one shared Python environment and are installed together:
+An agentic AI system for marketing workflows, built around LLM orchestration, retrieval-augmented generation, structured tools, and reusable AI infrastructure.
 
-- `rag_pipeline`: standalone LangChain ingestion, retrieval, and answer service.
-- `agent_harness`: standalone LangGraph tool-calling agent.
+This repository shows selected parts of a larger implementation. Some internal workflow logic, prompts, integrations, configuration, and production-oriented components are intentionally not included in the public version.
 
-The agent can run with only its calculator tool or optionally call the RAG service through HTTP. Both services support Ollama `qwen3.5:9b`; the chat model can be switched to OpenAI with environment configuration. RAG embeddings remain local with `qwen3-embedding:0.6b`.
+## Overview
 
-## Shared installation
+The system combines several layers:
 
-Use one virtual environment at the repository root. It gives both services one resolved version of every shared dependency.
+- **Marketing Agent** — coordinates AI-assisted marketing workflows including planning, research, content generation, and structured outputs.
+- **RAG Pipeline** — retrieves relevant knowledge from document collections and provides grounded context to AI workflows.
+- **Shared Agent Utilities** — reusable abstractions for LLM access, tools, state, and common agent functionality.
+- **Web Interface** — provides a user-facing interface for interacting with the system.
 
-Prerequisite: install Python 3.11 or newer with the Windows Python Launcher (`py`).
+The complete project also contains additional private orchestration and integration components that are not part of the public showcase.
 
-```powershell
-py -3.11 -m venv .venv
-.\.venv\Scripts\Activate.ps1
-pip install -e ".\rag_pipeline[test]" -e ".\agent_harness[test]"
+## Technology Stack
+
+### Agentic AI
+
+- LangGraph
+- LangChain
+- LangSmith
+- Structured tool calling
+- Multi-step agent workflows
+- LLM orchestration
+- State-based workflow management
+- Validation and evaluation
+
+### RAG & Knowledge Retrieval
+
+- Retrieval-Augmented Generation (RAG)
+- Document ingestion
+- Embedding generation
+- Semantic search
+- Vector databases
+- Metadata-based retrieval
+- Context preparation
+- Incremental document processing
+
+### Models & AI Providers
+
+The architecture supports both local and API-based language models and embedding models.
+
+Provider and model selection is separated from the main workflow so the underlying models can be exchanged without redesigning the agent architecture.
+
+### Backend & Data
+
+- Python
+- FastAPI
+- Pydantic
+- Chroma
+- PostgreSQL / Supabase
+- pgvector
+- HTTP APIs
+
+### Development & Operations
+
+- Modular Python packages
+- Typed data models
+- Environment-based configuration
+- Testing and validation
+- Observability and tracing
+- Docker-based development and deployment support
+
+## Architecture
+
+At a high level, the system follows this structure:
+
+```text
+User Interface
+      │
+      ▼
+Marketing Agent
+      │
+      ├── LLM / Agent Workflow
+      ├── Tools
+      ├── Research
+      └── RAG
+             │
+             ▼
+      Knowledge Sources
+      Embeddings
+      Vector Search
 ```
 
-`-e` installs both local projects in editable mode: source-code changes are used without reinstalling. `[test]` adds the test dependencies. The virtual environment is a local `.venv` folder; keep it while developing and recreate it only if you need a clean install.
+Shared utilities provide common functionality used across the agent and retrieval layers.
 
-Each service still has its own `.env` file because their service settings differ. See the project READMEs for configuration and run commands.
+The full implementation contains additional orchestration, evaluation, integrations, storage, and workflow logic that is intentionally omitted from the public repository.
 
-## Start instructions
+## RAG Pipeline
 
-Configure each service once before first use:
+The RAG layer is designed as an independent component rather than embedding retrieval logic directly inside the agent.
 
-```powershell
-Copy-Item rag_pipeline\.env.example rag_pipeline\.env
-Copy-Item agent_harness\.env.example agent_harness\.env
-```
+Its responsibilities include:
 
-Use either browser interfaces or terminal chat:
+1. loading source documents,
+2. preparing documents for retrieval,
+3. generating embeddings,
+4. storing and retrieving vector representations,
+5. selecting relevant context,
+6. providing structured evidence to downstream AI workflows.
 
-```powershell
-.\scripts\agent-ui.ps1
-```
+The implementation supports multiple knowledge collections and interchangeable storage backends.
 
-This starts the shared Agent Harness, Marketing, and Application interface at
-`http://localhost:8002/docs` and the RAG page at `http://localhost:8001/`.
-The shared interface package must already be installed. Keep the terminal open for logs;
-Ctrl+C stops services started by this launcher. An already-running RAG service is reused.
+## Agent Architecture
 
-On the RAG page, select a collection and click **Ingest with progress**.
-Source files belong in `rag_pipeline/data/documents/<collection>`.
-For Marketing books, use `rag_pipeline/data/documents/marketing/books`.
-To ingest Marketing from PowerShell while RAG is running:
+Agent workflows are built with **LangGraph** and use **LangChain-compatible tools**.
 
-```powershell
-Invoke-RestMethod -Method Post -Uri http://localhost:8001/ingest -ContentType "application/json" -Body '{"collection_name":"marketing"}'
-```
+The architecture separates:
 
-Ingestion never clears unchanged data.
-Ollama starts when needed and loads the installed embedding model.
-Select a local or configured API answer model and collection on the same page; both selections are saved in `rag_pipeline/data/interface_settings.json` and restored after refresh or RAG restart.
-RAG API documentation remains at `http://localhost:8001/docs`.
+- state,
+- tools,
+- retrieval,
+- model access,
+- workflow orchestration,
+- validation,
+- observability.
 
-```powershell
-.\scripts\agent-tui.ps1
-```
+This separation allows individual parts of the system to evolve independently and makes tools reusable across different AI workflows.
 
-This opens core-agent terminal chat, starts/reuses RAG and Ollama when needed,
-and stops only processes it started when chat exits.
+## Observability & Evaluation
 
-## Open feature PRs
+The complete project uses **LangSmith** and additional application-level evaluation mechanisms for tracing and analyzing AI workflows.
 
-These features are implemented in open pull requests and are not yet part of `development`:
+This includes monitoring model and tool interactions, inspecting multi-step execution, and evaluating workflow outputs.
 
-- **TUI layout:** Refines the terminal UI with a left sidebar, saved sessions, session details, inline sources, and compact command aliases without changing backend logic.
-- **RAG reranking:** Retrieves 10 chunks, reranks them by query-term overlap with vector distance as a tiebreaker, and keeps the best 4.
-- **Generic tool system:** Adds a shared typed tool definition and registry used by the existing calculator and RAG tools while keeping the LangGraph tool flow unchanged.
-- **Marketing agent:** Independent [Python workflow](marketing-agent/README.md) reusing Agent Harness utilities. One shared text/image result serves the selected channels; LinkedIn publishing is separate.
-- **Web search tool:** Adds reusable current-web search through OpenAI web search and registers it in the shared tool system.
-- **Application preparation tool:** Adds a tool that researches a target job, adapts an existing CV, and creates a cover letter using supported facts only.
-- **Forced tool control:** Adds a TUI tool selector and direct runner so a selected tool can run without the LLM choosing the tool first.
-- **Codex access tool:** Adds a reusable local Codex CLI adapter for answer, web-search, and image tasks with a stable result schema and local image artifacts.
+Detailed evaluation logic and tracing configuration are not included in the public showcase.
 
-## RAG collections and incremental ingestion
+## Public Repository Scope
 
-The project keeps one physical Chroma database at `rag_pipeline/data/vector_store_updated` and separates knowledge with named collections.
+This repository is intentionally a **selected technical showcase**, not a complete runnable distribution.
 
-- Default knowledge uses collection `agentic` with source files in `rag_pipeline/data/documents/agentic`.
-- New collections use `rag_pipeline/data/documents/<collection_name>`.
-- Marketing books use `rag_pipeline/data/documents/marketing/books`.
-- `POST /ingest` with `{"collection_name":"marketing"}` ingests only the `marketing` collection.
-- `POST /query` with `collection_name` queries only that collection.
-- Every source document gets a stable path-based ID and a content hash.
-- Ingestion skips unchanged files before embedding and updates only new or changed files.
-- Adding a new collection does not re-ingest existing collections.
-- Adding one document does not re-ingest unchanged documents in its collection.
-- The previous collection-wide `reset_collection()` behavior is removed.
+It includes representative implementation for parts of:
 
-The first ingestion of the existing `documents` collection after this change re-indexes its current files once because the old vectors do not contain the new stable ID/hash metadata. Later ingestion runs are incremental.
+- the marketing system,
+- RAG infrastructure,
+- shared agent utilities,
+- data models,
+- LLM integration,
+- tool abstractions,
+- and the user interface.
 
+Some files and directories are intentionally empty or incomplete to preserve the overall project structure without publishing private implementation details.
 
-## Optional Supabase runtime storage
+Not included publicly:
 
-Source prompts, templates, and books stay in the repository/local source folders.
-When `SUPABASE_ENABLED=true`, Marketing and RAG runtime results are mirrored to Supabase.
-Marketing source files, uploaded images, and generated images are uploaded to the private `agent-artifacts` bucket.
+- proprietary prompts,
+- core workflow intelligence,
+- private integrations,
+- credentials or environment configuration,
+- internal data and vector stores,
+- private automation,
+- deployment-specific configuration,
+- selected evaluation and orchestration logic.
 
-Apply `database_setup/supabase/shared_agentic_storage.sql` to the linked Supabase project.
-Set `SUPABASE_URL`, `SUPABASE_SECRET_KEY`, and `SUPABASE_DB_URL` in the root `.env`.
-Set `VECTOR_BACKEND=supabase` to use Supabase pgvector for RAG; leave `chroma` to keep the local backend.
-On the first Supabase ingestion, existing Chroma vectors are copied when possible; later ingestion remains document-hash incremental.
+The purpose of the repository is to demonstrate the system architecture, engineering approach, and technologies used without publishing the complete implementation.
