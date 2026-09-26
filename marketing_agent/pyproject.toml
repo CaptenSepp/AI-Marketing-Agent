@@ -1,0 +1,18 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "marketing-agent"
+version = "0.1.0"
+requires-python = ">=3.11"
+dependencies = ["agent-harness>=0.1.0", "agent-utilities>=0.1.0"]
+
+[project.optional-dependencies]
+test = ["pytest>=8,<10"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/marketing_agent"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src", "../agent_harness/src"]
